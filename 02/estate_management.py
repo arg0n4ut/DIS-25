@@ -20,8 +20,7 @@ def create_agent(conn):
             "INSERT INTO estate_agents (name,address,login,password) VALUES (%s,%s,%s,%s)",
             (name, address, login, pw)
         )
-    conn.commit()
-    print("Agent created.")
+    conn.commit(); print("Agent created.")
 
 def list_agents(conn):
     with conn.cursor() as cur:
@@ -54,48 +53,46 @@ def agent_login(conn):
             (login, pw)
         )
         row = cur.fetchone()
-    if row:
-        print("Login successful.")
-        return row  # (name,address)
-    else:
-        print("Login failed.")
-        return None
+    if row: print("Login successful."); return row
+    else: print("Login failed."); return None
 
 # Estate management
 def create_estate(conn, agent):
-    # insert base estate
-    cols = ["id","city","postal_code","street","street_number","square_area"]
-    vals = [input(f"{c}: ") for c in cols]
+    # common fields
+    id = input("ID: ")
+    city = input("City: ")
+    postal_code = input("Postal code: ")
+    street = input("Street: ")
+    street_number = input("Street number: ")
+    square_area = input("Square area: ")
+    # insert base
     with conn.cursor() as cur:
-        cur.execute(f"INSERT INTO estates ({','.join(cols)}) VALUES (%s,%s,%s,%s,%s,%s)", vals)
-        # link to manager
         cur.execute(
-            "INSERT INTO manages (name,address,id) VALUES (%s,%s,%s)",
-            (agent[0], agent[1], vals[0])
+            "INSERT INTO estates (id,city,postal_code,street,street_number,square_area) VALUES (%s,%s,%s,%s,%s,%s)",
+            (id,city,postal_code,street,street_number,square_area)
         )
-    conn.commit(); print("Estate added.")
-
-# def list_estates(conn):
-#      with conn.cursor() as cur:
-#          cur.execute("SELECT id,city,postal_code,street,street_number,square_area FROM estates")
-#          estates = cur.fetchall()
-#      for e in estates:
-#          eid, city, pc, st, sn, area = e
-#          with conn.cursor() as cur:
-#              cur.execute("SELECT floors,price,garden FROM houses WHERE id=%s", (eid,))
-#              h = cur.fetchone()
-#          if h:
-#              floors, price, garden = h
-#              print(f"House {eid}: {city}, {st} {sn}, area={area}sqm, floors={floors}, price={price}, garden={garden}")
-#          else:
-#              with conn.cursor() as cur:
-#                  cur.execute("SELECT floor,rent,rooms,balcony,kitchen FROM apartments WHERE id=%s", (eid,))
-#                  a = cur.fetchone()
-#              if a:
-#                  floor, rent, rooms, balcony, kitchen = a
-#                  print(f"Apartment {eid}: {city}, {st} {sn}, area={area}sqm, floor={floor}, rent={rent}, rooms={rooms}, balcony={balcony}, kitchen={kitchen}")
-#              else:
-#                  print(f"Estate {eid}: {city}, {st} {sn}, area={area}sqm (no subtype record)")
+    # subtype
+    kind = input("Type (house/apartment): ").lower()
+    with conn.cursor() as cur:
+        if kind == 'house':
+            floors = input("Floors: ")
+            price = input("Price: ")
+            garden = input("Garden (true/false): ")
+            cur.execute(
+                "INSERT INTO houses (id,floors,price,garden) VALUES (%s,%s,%s,%s)",
+                (id,floors,price,garden=='true')
+            )
+        else:
+            floor = input("Apartment floor: ")
+            rent = input("Rent: ")
+            rooms = input("Rooms: ")
+            balcony = input("Balcony (true/false): ")
+            kitchen = input("Kitchen (true/false): ")
+            cur.execute(
+                "INSERT INTO apartments (id,floor,rent,rooms,balcony,kitchen) VALUES (%s,%s,%s,%s,%s,%s)",
+                (id,floor,rent,rooms,balcony=='true',kitchen=='true')
+            )
+    conn.commit(); print("Estate created.")
 
 def list_estates(conn, agent):
     with conn.cursor() as cur:
@@ -116,18 +113,17 @@ def list_estates(conn, agent):
                 print(base+f" | Apt: floor={afloor}, rent={rent}, rooms={rooms}, balcony={balcony}, kitchen={kitchen}")
 
 def delete_estate(conn):
-     eid = input("Estate id to delete: ")
-     with conn.cursor() as cur:
-         cur.execute("SELECT 1 FROM houses WHERE id=%s",(eid,))
-         if cur.fetchone(): cur.execute("DELETE FROM houses WHERE id=%s",(eid,))
-         else: cur.execute("DELETE FROM apartments WHERE id=%s",(eid,))
-         cur.execute("DELETE FROM manages WHERE id=%s",(eid,))
-         cur.execute("DELETE FROM estates WHERE id=%s",(eid,))
-     conn.commit(); print("Estate deleted.")
+    eid = input("Estate id to delete: ")
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM houses WHERE id=%s",(eid,))
+        if cur.fetchone(): cur.execute("DELETE FROM houses WHERE id=%s",(eid,))
+        else: cur.execute("DELETE FROM apartments WHERE id=%s",(eid,))
+        cur.execute("DELETE FROM manages WHERE id=%s",(eid,))
+        cur.execute("DELETE FROM estates WHERE id=%s",(eid,))
+    conn.commit(); print("Estate deleted.")
 
 def update_estate(conn):
     eid = input("Estate id: ")
-    # update base
     city,pc,st,stn,area = input("City: "),input("Postal code: "),input("Street: "),input("Street number: "),input("Square area: ")
     with conn.cursor() as cur:
         cur.execute(
@@ -161,62 +157,104 @@ def estate_management(conn):
         elif c=='4': delete_estate(conn)
         elif c=='0': break
 
-# Contract management remains unchanged
 def insert_person(conn):
-    fn,ln,addr = input("First name: "),input("Name: "),input("Address: ")
-    with conn.cursor() as cur:
-        cur.execute("INSERT INTO person(first_name,name,address) VALUES(%s,%s,%s)", (fn,ln,addr))
-    conn.commit(); print("Person added.")
+     fn, name, addr = input("First name: "), input("Name: "), input("Address: ")
+     with conn.cursor() as cur:
+         cur.execute(
+             "INSERT INTO person (first_name,name,address) VALUES (%s,%s,%s)",
+             (fn,name,addr)
+         )
+     conn.commit(); print("Person added.")
 
 def sign_contract(conn):
-    num,date,place = input("#:"),input("Date (YYYY-MM-DD):"),input("Place:")
+    # create base contract
+    num = input("Contract number: ")
+    date = input("Date (YYYY-MM-DD): ")
+    place = input("Place: ")
     with conn.cursor() as cur:
-        cur.execute("INSERT INTO contracts(number,date,place) VALUES(%s,%s,%s)", (num,date,place))
-    typ=input("Type(tenancy/purchase):")
-    if typ=='tenancy':
-        sd,dur,ac = input("Start date:"),input("Duration:"),input("Additional costs:")
+        cur.execute("INSERT INTO contracts (number,date,place) VALUES (%s,%s,%s)", (num, date, place))
+    conn.commit()
+    typ = input("Type (tenancy/purchase): ")
+    if typ == "tenancy":
+        sd = input("Start date (YYYY-MM-DD): ")
+        dur = input("Duration (months): ")
+        ac = input("Additional costs: ")
+        eid = input("Estate ID: ")
+        fn = input("Renter's First Name: ")
+        ln = input("Renter's Last Name: ")
+        addr = input("Renter's Address: ")
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO tenancy_contracts(number,start_date,duration,additional_costs) VALUES(%s,%s,%s,%s)", (num,sd,dur,ac))
+            cur.execute(
+                "INSERT INTO tenancy_contracts (number,start_date,duration,additional_costs) VALUES (%s,%s,%s,%s)",
+                (num, sd, dur, ac)
+            )
+            cur.execute(
+                "INSERT INTO rents (number,id,first_name,name,address) VALUES (%s,%s,%s,%s,%s)",
+                (num, eid, fn, ln, addr)
+            )
+        conn.commit()
+        print("Tenancy contract created.")
     else:
-        inst,rate = input("# installments:"),input("Interest rate:")
+        inst = input("# installments: ")
+        rate = input("Interest rate: ")
+        eid = input("Estate ID: ")
+        fn = input("Buyer's First Name: ")
+        ln = input("Buyer's Last Name: ")
+        addr = input("Buyer's Address: ")
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO purchase_contracts(number,number_installments,interest_rate) VALUES(%s,%s,%s)", (num,inst,rate))
-    conn.commit(); print("Contract signed.")
+            cur.execute(
+                "INSERT INTO purchase_contracts (number,number_installments,interest_rate) VALUES (%s,%s,%s)",
+                (num, inst, rate)
+            )
+            cur.execute(
+                "INSERT INTO sells (id,first_name,name,address,number) VALUES (%s,%s,%s,%s,%s)",
+                (eid, fn, ln, addr, num)
+            )
+        conn.commit()
+        print("Purchase contract created.")
 
-def list_contracts(conn):
+# Contract management now requires agent_login and filters by manages
+def list_contracts(conn, agent):
     with conn.cursor() as cur:
-        # tenancy contracts with person and estate info
+        # Tenancy contracts for estates managed by agent
         cur.execute(
-            "SELECT c.number,c.date,c.place, t.start_date,t.duration,t.additional_costs, p.first_name,p.name,p.address, r.id "
+            "SELECT c.number,c.date,c.place,t.start_date,t.duration,t.additional_costs,p.first_name,p.name,p.address,r.id "
             "FROM contracts c "
-            "LEFT JOIN tenancy_contracts t ON c.number=t.number "
-            "LEFT JOIN rents r ON t.number=r.number "
-            "LEFT JOIN person p ON r.first_name=p.first_name AND r.name=p.name AND r.address=p.address;")
+            "JOIN tenancy_contracts t ON c.number=t.number "
+            "JOIN rents r ON t.number=r.number "
+            "JOIN person p ON r.first_name=p.first_name AND r.name=p.name AND r.address=p.address "
+            "JOIN manages m ON r.id=m.id AND m.name=%s AND m.address=%s;",
+            (agent[0],agent[1])
+        )
         print("-- Tenancy Contracts --")
         for num,date,place,sd,dur,ac,fn,ln,addr,eid in cur:
-            print(f"#{num} {date} at {place} | Tenancy: start={sd}, dur={dur}mo, add_costs={ac} | Person={fn} {ln} @{addr} | Estate ID={eid}")
-        # purchase contracts
+            print(f"#{num} {date} at {place} | Tenancy start={sd}, dur={dur}mo, add_costs={ac} | {fn} {ln} @{addr} | Estate ID={eid}")
+        # Purchase contracts
         cur.execute(
-            "SELECT c.number,c.date,c.place, pc.number_installments,pc.interest_rate, s.first_name,s.name,s.address, s.id "
+            "SELECT c.number,c.date,c.place,pc.number_installments,pc.interest_rate,s.first_name,s.name,s.address,s.id "
             "FROM contracts c "
-            "LEFT JOIN purchase_contracts pc ON c.number=pc.number "
-            "LEFT JOIN sells s ON c.number=s.number "
-            "LEFT JOIN person p2 ON s.first_name=p2.first_name AND s.name=p2.name AND s.address=p2.address;")
+            "JOIN purchase_contracts pc ON c.number=pc.number "
+            "JOIN sells s ON c.number=s.number "
+            "JOIN manages m ON s.id=m.id AND m.name=%s AND m.address=%s;",
+            (agent[0],agent[1])
+        )
         print("-- Purchase Contracts --")
         for num,date,place,ni,ir,fn,ln,addr,eid in cur:
-            print(f"#{num} {date} at {place} | Purchase: installments={ni}, rate={ir} | Person={fn} {ln} @{addr} | Estate ID={eid}")
+            print(f"#{num} {date} at {place} | Purchase inst={ni}, rate={ir} | {fn} {ln} @{addr} | Estate ID={eid}")
 
 def contract_management(conn):
+    agent = agent_login(conn)
+    if not agent: return
     while True:
-        print("[1] Person [2] Sign [3] List [0] Back")
+        print("[1] Insert person [2] Sign contract [3] List contracts [0] Back")
         c=input("> ")
         if c=='1': insert_person(conn)
         elif c=='2': sign_contract(conn)
-        elif c=='3': list_contracts(conn)
+        elif c=='3': list_contracts(conn,agent)
         elif c=='0': break
 
 def main():
-    conn=connect_db()
+    conn = connect_db()
     while True:
         print("Modes:[1]Agents [2]Estates [3]Contracts [0]Exit")
         m=input("> ")
