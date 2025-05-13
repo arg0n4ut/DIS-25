@@ -1,6 +1,6 @@
-3.3:
+# 3.3:
 
-a)
+# a)
 import sqlite3
 
 # Setup initial in-memory SQLite DB
@@ -118,13 +118,13 @@ simulate_S2()
 simulate_S3()
 
 
-b) Yes, the result may differ under Serializable isolation compared to Read Committed,
-especially in cases like S1 and S2, where non-repeatable reads or write-write conflicts are possible.
-However, SQLite doesn’t support full Serializable isolation in the strict sense — it only has DEFERRED,
-IMMEDIATE, and EXCLUSIVE transaction modes, and it uses snapshot isolation behavior rather than true serializability.
-This means some anomalies may still happen, but write conflicts will be detected and blocked.
+# b) Yes, the result may differ under Serializable isolation compared to Read Committed,
+# especially in cases like S1 and S2, where non-repeatable reads or write-write conflicts are possible.
+# However, SQLite doesn’t support full Serializable isolation in the strict sense — it only has DEFERRED,
+# IMMEDIATE, and EXCLUSIVE transaction modes, and it uses snapshot isolation behavior rather than true serializability.
+# This means some anomalies may still happen, but write conflicts will be detected and blocked.
 
-c) S1 simulation using SS2PL:
+# c) S1 simulation using SS2PL:
 import psycopg2
 import time
 
