@@ -1,0 +1,191 @@
+3.3:
+
+a)
+import sqlite3
+
+# Setup initial in-memory SQLite DB
+def setup_database():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT)")
+    initial_data = [(1, 'Albert'), (2, 'Beate'), (3, 'Chris'), (4, 'Dora'), (5, 'Emil')]
+    cursor.executemany("INSERT INTO people (id, name) VALUES (?, ?)", initial_data)
+    conn.commit()
+    return conn
+
+def print_table_state(conn, label):
+    cursor = conn.cursor()
+    print(f"\n--- {label} ---")
+    cursor.execute("SELECT * FROM people ORDER BY id")
+    for row in cursor.fetchall():
+        print(row)
+
+# Simulate S1 = r1(x) w2(x) c2 w1(x) r1(x) c1
+def simulate_S1():
+    print("\n===== S1 =====")
+    conn = setup_database()
+
+    # Simulating Read Committed by using 2 connections
+    t1 = conn
+    t2 = sqlite3.connect(":memory:")
+    t2.executescript("ATTACH DATABASE ':memory:' AS main")
+    t2_cursor = t2.cursor()
+
+    # Since SQLite doesn't support true isolation levels in-memory, we simulate steps manually
+
+    # Step r1(x) – T1 reads x (id=1)
+    cursor = t1.cursor()
+    cursor.execute("SELECT name FROM people WHERE id = 1")
+    print("T1 reads x:", cursor.fetchone()[0])  # Should be Albert
+
+    # Step w2(x) – T2 writes to x
+    cursor = conn.cursor()
+    cursor.execute("UPDATE people SET name = 'X2' WHERE id = 1")
+
+    # Step c2 – T2 commits
+    conn.commit()
+
+    # Step w1(x) – T1 writes to x
+    cursor = t1.cursor()
+    cursor.execute("UPDATE people SET name = 'X1' WHERE id = 1")
+
+    # Step r1(x) – T1 reads x again (non-repeatable read possible under RC)
+    cursor.execute("SELECT name FROM people WHERE id = 1")
+    print("T1 reads x again:", cursor.fetchone()[0])  # Should be X1
+
+    # Step c1 – T1 commits
+    t1.commit()
+
+    print_table_state(conn, "S1 Result")
+
+# Simulate S2 = r1(x) w2(x) c2 r1(x) c1
+def simulate_S2():
+    print("\n===== S2 =====")
+    conn = setup_database()
+    cursor = conn.cursor()
+
+    # r1(x) – T1 reads x
+    cursor.execute("SELECT name FROM people WHERE id = 1")
+    print("T1 reads x:", cursor.fetchone()[0])  # Albert
+
+    # w2(x)
+    cursor.execute("UPDATE people SET name = 'X2' WHERE id = 1")
+    # c2
+    conn.commit()
+
+    # r1(x) – under RC, T1 sees committed change
+    cursor.execute("SELECT name FROM people WHERE id = 1")
+    print("T1 reads x again:", cursor.fetchone()[0])  # X2
+
+    # c1
+    conn.commit()
+
+    print_table_state(conn, "S2 Result")
+
+# Simulate S3 = r2(x) w1(x) w1(y) c1 r2(y) w2(x) w2(y) c2
+def simulate_S3():
+    print("\n===== S3 =====")
+    conn = setup_database()
+    cursor = conn.cursor()
+
+    # r2(x)
+    cursor.execute("SELECT name FROM people WHERE id = 1")
+    print("T2 reads x:", cursor.fetchone()[0])  # Albert
+
+    # w1(x)
+    cursor.execute("UPDATE people SET name = 'X1' WHERE id = 1")
+    # w1(y)
+    cursor.execute("UPDATE people SET name = 'Y1' WHERE id = 2")
+    # c1
+    conn.commit()
+
+    # r2(y)
+    cursor.execute("SELECT name FROM people WHERE id = 2")
+    print("T2 reads y:", cursor.fetchone()[0])  # Y1
+
+    # w2(x)
+    cursor.execute("UPDATE people SET name = 'X2' WHERE id = 1")
+    # w2(y)
+    cursor.execute("UPDATE people SET name = 'Y2' WHERE id = 2")
+    # c2
+    conn.commit()
+
+    print_table_state(conn, "S3 Result")
+
+# Run all simulations
+simulate_S1()
+simulate_S2()
+simulate_S3()
+
+
+b) Yes, the result may differ under Serializable isolation compared to Read Committed,
+especially in cases like S1 and S2, where non-repeatable reads or write-write conflicts are possible.
+However, SQLite doesn’t support full Serializable isolation in the strict sense — it only has DEFERRED,
+IMMEDIATE, and EXCLUSIVE transaction modes, and it uses snapshot isolation behavior rather than true serializability.
+This means some anomalies may still happen, but write conflicts will be detected and blocked.
+
+c) S1 simulation using SS2PL:
+import psycopg2
+import time
+
+# Connect two clients (transactions)
+conn1 = psycopg2.connect(dbname="yourdb", user="youruser", password="yourpass")
+conn2 = psycopg2.connect(dbname="yourdb", user="youruser", password="yourpass")
+conn1.autocommit = False
+conn2.autocommit = False
+
+def reset_table():
+    with psycopg2.connect(dbname="yourdb", user="youruser", password="yourpass") as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM sheet3")
+            cur.execute("""
+                INSERT INTO sheet3 (id, name) VALUES
+                (1, 'Albert'), (2, 'Beate'), (3, 'Chris'), (4, 'Dora'), (5, 'Emil')
+            """)
+            conn.commit()
+
+def simulate_S1():
+    print("\n--- S1 with manual row locking ---")
+    reset_table()
+
+    cur1 = conn1.cursor()
+    cur2 = conn2.cursor()
+
+    # T1: r1(x)
+    cur1.execute("SELECT * FROM sheet3 WHERE id = 1 FOR SHARE")  # Acquire shared lock
+    cur1.execute("SELECT name FROM sheet3 WHERE id = 1")
+    print("T1 reads x:", cur1.fetchone()[0])
+
+    # T2: w2(x)
+    cur2.execute("SELECT * FROM sheet3 WHERE id = 1 FOR UPDATE")  # Waits if lock is held
+    cur2.execute("UPDATE sheet3 SET name = 'X2' WHERE id = 1")
+
+    # T2: c2
+    conn2.commit()
+    print("T2 committed")
+
+    # T1: w1(x)
+    cur1.execute("SELECT * FROM sheet3 WHERE id = 1 FOR UPDATE")
+    cur1.execute("UPDATE sheet3 SET name = 'X1' WHERE id = 1")
+
+    # T1: r1(x)
+    cur1.execute("SELECT name FROM sheet3 WHERE id = 1")
+    print("T1 reads x again:", cur1.fetchone()[0])
+
+    # T1: c1
+    conn1.commit()
+    print("T1 committed")
+
+    # Print final result
+    with psycopg2.connect(dbname="yourdb", user="youruser", password="yourpass") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM sheet3 ORDER BY id")
+            print("\nFinal table state:")
+            for row in cur.fetchall():
+                print(row)
+
+simulate_S1()
+
+# Close connections
+conn1.close()
+conn2.close()
