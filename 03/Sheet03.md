@@ -200,3 +200,60 @@ WHERE id = 1
 ```
 [40P01] ERROR: deadlock detected Detail: Process 44145 waits for ShareLock on transaction 3497005; blocked by process 43912. Process 43912 waits for ShareLock on transaction 3497006; blocked by process 44145. Hint: See server log for query details. Where: while updating tuple (0,17) in relation "sheet3"
 ```
+
+## 3.3 Sheduling
+```
+===== S1 =====
+T1 reads: [('X2',)]
+-> S1 value: [('X1',)]
+
+===== S2 =====
+T1 reads: [('X1',)]
+-> S2 value: [('X2',)]
+
+===== S3 =====
+T2 reads: [('X2',)]
+T2 reads: [('Y1',)]
+-> S3 value: [('X2',), ('Y2',)]
+
+b) Transactions set to serializable
+===== S1 =====
+T1 reads: [('X2',)]
+Transaction failed: could not serialize access due to concurrent update
+
+===== S2 =====
+T1 reads: [('X2',)]
+-> S2 value: [('X2',)]
+
+===== S3 =====
+T2 reads: [('X2',)]
+T2 reads: [('Y2',)]
+Transaction failed: could not serialize access due to concurrent update
+
+c) RX Locking
+===== S1 with manual row locking =====
+T1 reads: [('X1',)]
+Traceback (most recent call last):
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 236, in <module>
+    execute_schedule_1_with_locks()
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 154, in execute_schedule_1_with_locks
+    t2_cursor.execute(write_lock(0)) # Waits if lock is held
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+===== S2 with manual row locking =====
+T1 reads: [('X1',)]
+Traceback (most recent call last):
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 244, in <module>
+    execute_schedule_2_with_locks()
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 182, in execute_schedule_2_with_locks
+    t2_cursor.execute(write_lock(0)) # Waits if lock is held
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+===== S3 with manual row locking =====
+T2 reads: [('X1',)]
+Traceback (most recent call last):
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 252, in <module>
+    execute_schedule_3_with_locks()
+  File "c:\Users\ikour\IASON\UNI\DIS\DIS-25\03\3.3.py", line 207, in execute_schedule_3_with_locks
+    t1_cursor.execute(write_lock(0))
+```
