@@ -231,6 +231,7 @@ T2 reads: [('Y2',)]
 Transaction failed: could not serialize access due to concurrent update
 
 c) RX Locking
+
 ===== S1 with manual row locking =====
 T1 reads: [('X1',)]
 Traceback (most recent call last):
