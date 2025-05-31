@@ -94,29 +94,33 @@ class PManager:
     def write(self, taid, pageid, data):
         if taid not in self.transactions or self.transactions[taid] != 'active':
             raise Exception("Transaction not active")
-        
-        # Update buffer
         self.lsn_counter += 1
-        
         self.buffer[pageid] = (self.lsn_counter, data)
-        
-        # Log the write operation
+        # Track which transaction wrote this page
+        if not hasattr(self, 'page_to_taid'):
+            self.page_to_taid = {}
+        self.page_to_taid[pageid] = taid
         self._log_write(taid, pageid, data, self.lsn_counter)
-        
-        # Check buffer size and flush if necessary
         if len(self.buffer) > 5:
             self._flush_buffer()
     
     def _flush_buffer(self):
+        to_remove = []
         for pageid, (lsn, data) in list(self.buffer.items()):
-            # Ensure pageid is a string for path construction
-            page_path = os.path.join(self.page_dir, str(pageid))
-            # Persist page with structure: [PageID, LSN, Data]
-            # Here, we'll use a comma-separated format. PageID is also the filename.
-            file_content = f"{pageid},{lsn},{data}"
-            with open(page_path, 'w') as f:
-                f.write(file_content)
-        self.buffer.clear()
+            # Find the transaction that last wrote this page
+            # You may need to track which transaction wrote each page in the buffer!
+            # For now, let's assume you add a mapping: self.page_to_taid[pageid] = taid in write()
+            taid = self.page_to_taid.get(pageid)
+            if taid and self.transactions.get(taid) == 'committed':
+                page_path = os.path.join(self.page_dir, str(pageid))
+                file_content = f"{pageid},{lsn},{data}"
+                with open(page_path, 'w') as f:
+                    f.write(file_content)
+                to_remove.append(pageid)
+        # Remove only flushed pages from buffer
+        for pageid in to_remove:
+            self.buffer.pop(pageid, None)
+            self.page_to_taid.pop(pageid, None)
 
     
     def _log_commit(self, taid, lsn):
