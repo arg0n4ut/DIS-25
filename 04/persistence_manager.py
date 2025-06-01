@@ -75,6 +75,7 @@ class PManager:
         self.transaction_id_counter = 0
         self.lsn_counter = 0
         self.transactions = {}  # Maps transaction ID to its state
+        self.page_to_taid = {}  # Maps pageid to taid that last wrote it in buffer
 
     def begin_transaction(self):
         self.transaction_id_counter += 1
@@ -86,7 +87,8 @@ class PManager:
         if taid in self.transactions and self.transactions[taid] == 'active':
             self.lsn_counter += 1
             self.transactions[taid] = 'committed'
-            self._flush_buffer()
+            # No-Force: Do not flush buffer on every commit.
+            # Flushing is handled by the write method when buffer is full.
             self._log_commit(taid, self.lsn_counter)
             return True
         return False
@@ -96,10 +98,7 @@ class PManager:
             raise Exception("Transaction not active")
         self.lsn_counter += 1
         self.buffer[pageid] = (self.lsn_counter, data)
-        # Track which transaction wrote this page
-        if not hasattr(self, 'page_to_taid'):
-            self.page_to_taid = {}
-        self.page_to_taid[pageid] = taid
+        self.page_to_taid[pageid] = taid # Track which transaction wrote this page
         self._log_write(taid, pageid, data, self.lsn_counter)
         if len(self.buffer) > 5:
             self._flush_buffer()
@@ -107,9 +106,6 @@ class PManager:
     def _flush_buffer(self):
         to_remove = []
         for pageid, (lsn, data) in list(self.buffer.items()):
-            # Find the transaction that last wrote this page
-            # You may need to track which transaction wrote each page in the buffer!
-            # For now, let's assume you add a mapping: self.page_to_taid[pageid] = taid in write()
             taid = self.page_to_taid.get(pageid)
             if taid and self.transactions.get(taid) == 'committed':
                 page_path = os.path.join(self.page_dir, str(pageid))
@@ -169,6 +165,8 @@ class PManager:
     
     def clear_buffer(self):
         self.buffer.clear()
+        if hasattr(self, 'page_to_taid'): # Ensure it exists (it should due to init)
+            self.page_to_taid.clear()
     
     def clear_transactions(self):
         self.transactions.clear()
