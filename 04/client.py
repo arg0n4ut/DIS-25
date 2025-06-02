@@ -23,10 +23,10 @@ class Client:
     def run(self):
         taid = self.pmanager.begin_transaction()
         print(f"Client {self.client_id} started transaction {taid}")
-        num_writes = random.randint(1, 5)  # Number of writes can be randomized or fixed
+        num_writes = random.randint(1, 10)  # Number of writes can be randomized or fixed
         for i in range(num_writes):
-            pageid = i + (self.client_id * 10)  # Ensure unique page IDs for each client
-            data = f"data_from_client_{self.client_id}_write_{i+1}"
+            pageid = random.randint(10, 19) + (self.client_id * 10)  # Ensure unique page IDs for each client
+            data = f"data_from_client_{self.client_id+1}_write_{i+1}"
             self.pmanager.write(taid, pageid, data)
             print(f"Client {self.client_id} wrote to page {pageid}: {data}")
             time.sleep(random.uniform(0.1, 0.5))  # Simulate brief pause after each write
