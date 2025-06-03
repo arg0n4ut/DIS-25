@@ -74,8 +74,8 @@ class PManager:
         os.makedirs(self.page_dir, exist_ok=True)
         self.transaction_id_counter = 0
         self.lsn_counter = 0
-        self.transactions = {}  # Maps transaction ID to its state
-        self.page_to_taid = {}  # Maps pageid to taid that last wrote it in buffer
+        self.transactions = {} # transaction ID w state
+        self.page_to_taid = {} # Maps pageid to taid that last wrote it in buffer
 
     def begin_transaction(self):
         self.transaction_id_counter += 1
@@ -87,8 +87,7 @@ class PManager:
         if taid in self.transactions and self.transactions[taid] == 'active':
             self.lsn_counter += 1
             self.transactions[taid] = 'committed'
-            # No-Force: Do not flush buffer on every commit.
-            # Flushing is handled by the write method when buffer is full.
+            # No-Force: do not flush buffer on commit
             self._log_commit(taid, self.lsn_counter)
             return True
         return False
@@ -98,7 +97,7 @@ class PManager:
             raise Exception("Transaction not active")
         self.lsn_counter += 1
         self.buffer[pageid] = (self.lsn_counter, data)
-        self.page_to_taid[pageid] = taid # Track which transaction wrote this page
+        self.page_to_taid[pageid] = taid
         self._log_write(taid, pageid, data, self.lsn_counter)
         if len(self.buffer) > 5:
             self._flush_buffer()
@@ -113,7 +112,7 @@ class PManager:
                 with open(page_path, 'w') as f:
                     f.write(file_content)
                 to_remove.append(pageid)
-        # Remove only flushed pages from buffer
+        # remove flushed pages 
         for pageid in to_remove:
             self.buffer.pop(pageid, None)
             self.page_to_taid.pop(pageid, None)
@@ -125,7 +124,7 @@ class PManager:
     
     def _log_write(self, taid, pageid, data, lsn):
         with open(self.log_file, 'a') as f:
-            # Log entry: [LSN, TAID, PageID, Redo] where Redo is the new data
+            # Log entry: [LSN, TAID, PageID, Redo]
             f.write(f"{lsn}, {taid}, {pageid}, {data}\n")
         
     def get_page(self, pageid):
@@ -133,12 +132,11 @@ class PManager:
         if os.path.exists(page_path):
             with open(page_path, 'r') as f:
                 line = f.readline().strip()
-                # Assuming format "PageID,LSN,Data"
+                # format "PageID,LSN,Data"
                 parts = line.split(',', 2) 
                 if len(parts) == 3:
                     # pid_from_file, lsn_from_file, data_content = parts
-                    # Add validation if needed, e.g., assert str(pageid) == pid_from_file
-                    return parts[2] # Return data
+                    return parts[2] # data
         return None
     
     def get_transaction_state(self, taid):
@@ -165,7 +163,7 @@ class PManager:
     
     def clear_buffer(self):
         self.buffer.clear()
-        if hasattr(self, 'page_to_taid'): # Ensure it exists (it should due to init)
+        if hasattr(self, 'page_to_taid'):
             self.page_to_taid.clear()
     
     def clear_transactions(self):

@@ -62,12 +62,12 @@ class Recovery:
                         if len(page_parts) == 3:
                             page_lsn = int(page_parts[1])
                             if lsn > page_lsn:
-                                # Perform redo
+                                # redo:
                                 page_file.seek(0)
                                 page_file.write(f"{pageid},{lsn},{data}\n")
                                 print(f"Redone TA {taid} on page {pageid} with data: {data}\n")
                 else:
-                    # If the page does not exist, create it
+                    # if page doesnt exist, create it:
                     with open(page_path, 'w') as page_file:
                         page_file.write(f"{pageid},{lsn},{data}\n")
                         print(f"Created page {pageid} with data: {data}")
