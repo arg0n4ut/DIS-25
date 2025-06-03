@@ -30,7 +30,7 @@ class Client:
             self.pmanager.write(taid, pageid, data)
             print(f"Client {self.client_id} wrote to page {pageid}: {data}")
             time.sleep(random.uniform(0.1, 0.5)) # random pause:
-            # 50% chance to commit
+            # 70% chance to commit
         if random.random() < 0.7:
             if self.pmanager.commit(taid):
                 print(f"Client {self.client_id} committed transaction {taid} (random)")
