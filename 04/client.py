@@ -29,11 +29,16 @@ class Client:
             data = f"data_from_client_{self.client_id+1}_write_{i+1}"
             self.pmanager.write(taid, pageid, data)
             print(f"Client {self.client_id} wrote to page {pageid}: {data}")
-            time.sleep(random.uniform(0.1, 0.5)) # random pause
-        if self.pmanager.commit(taid):
-            print(f"Client {self.client_id} committed transaction {taid}")
+            time.sleep(random.uniform(0.1, 0.5)) # random pause:
+            # 50% chance to commit
+        if random.random() < 0.7:
+            if self.pmanager.commit(taid):
+                print(f"Client {self.client_id} committed transaction {taid} (random)")
+            else:
+                print(f"Client {self.client_id} failed to commit transaction {taid} (random)")
         else:
-            print(f"Client {self.client_id} failed to commit transaction {taid}")
+            print(f"Client {self.client_id} decided not to commit transaction {taid}")
+        print(f"Buffer: {self.pmanager.get_buffer()}")
 
 def start_clients(num_clients):
     threads = []

@@ -63,7 +63,7 @@ class Recovery:
                             page_lsn = int(page_parts[1])
                             if lsn > page_lsn:
                                 # redo:
-                                page_file.seek(0)
+                                page_file.seek(0) # doesnt delete whole line
                                 page_file.write(f"{pageid},{lsn},{data}\n")
                                 print(f"Redone TA {taid} on page {pageid} with data: {data}\n")
                 else:
