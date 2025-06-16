@@ -1,0 +1,187 @@
+db.movies.find({
+rating: {
+$gt: 6.14,
+$lt: 7.78
+}
+}).explain("executionStats")
+
+--> 122 ms
+{
+  explainVersion: '1',
+  queryPlanner: {
+    namespace: 'imdb.movies',
+    indexFilterSet: false,
+    parsedQuery: {
+      '$and': [ { rating: { '$lt': 7.78 } }, { rating: { '$gt': 6.14 } } ]
+    },
+    queryHash: '3E97F8B4',
+    planCacheKey: '3E97F8B4',
+    optimizationTimeMillis: 0,
+    maxIndexedOrSolutionsReached: false,
+    maxIndexedAndSolutionsReached: false,
+    maxScansToExplodeReached: false,
+    winningPlan: {
+      stage: 'COLLSCAN',
+      filter: {
+        '$and': [ { rating: { '$lt': 7.78 } }, { rating: { '$gt': 6.14 } } ]
+      },
+      direction: 'forward'
+    },
+    rejectedPlans: []
+  },
+  executionStats: {
+    executionSuccess: true,
+    nReturned: 94327,
+    executionTimeMillis: 122,
+    totalKeysExamined: 0,
+    totalDocsExamined: 234252,
+    executionStages: {
+      stage: 'COLLSCAN',
+      filter: {
+        '$and': [ { rating: { '$lt': 7.78 } }, { rating: { '$gt': 6.14 } } ]
+      },
+      nReturned: 94327,
+      executionTimeMillisEstimate: 13,
+      works: 234253,
+      advanced: 94327,
+      needTime: 139925,
+      needYield: 0,
+      saveState: 234,
+      restoreState: 234,
+      isEOF: 1,
+      direction: 'forward',
+      docsExamined: 234252
+    }
+  },
+  command: {
+    find: 'movies',
+    filter: { rating: { '$gt': 6.14, '$lt': 7.78 } },
+    '$db': 'imdb'
+  },
+  serverInfo: {
+    host: '18bd7d62c0e7',
+    port: 27017,
+    version: '7.0.21',
+    gitVersion: 'a47b62aff2bae1914085c3ef1d90fc099acf000c'
+  },
+  serverParameters: {
+    internalQueryFacetBufferSizeBytes: 104857600,
+    internalQueryFacetMaxOutputDocSizeBytes: 104857600,
+    internalLookupStageIntermediateDocumentMaxSizeBytes: 104857600,
+    internalDocumentSourceGroupMaxMemoryBytes: 104857600,
+    internalQueryMaxBlockingSortMemoryUsageBytes: 104857600,
+    internalQueryProhibitBlockingMergeOnMongoS: 0,
+    internalQueryMaxAddToSetBytes: 104857600,
+    internalDocumentSourceSetWindowFieldsMaxMemoryBytes: 104857600,
+    internalQueryFrameworkControl: 'forceClassicEngine'
+  },
+  ok: 1
+}
+
+To make the query execution a little faster, creadb.movies.ensureIndex({rating: 1})
+db.movies.ensureIndex({rating: 1})
+
+--> 113 ms
+{
+  explainVersion: '1',
+  queryPlanner: {
+    namespace: 'imdb.movies',
+    indexFilterSet: false,
+    parsedQuery: {
+      '$and': [ { rating: { '$lt': 7.78 } }, { rating: { '$gt': 6.14 } } ]
+    },
+    queryHash: '3E97F8B4',
+    planCacheKey: '570B7C00',
+    optimizationTimeMillis: 0,
+    maxIndexedOrSolutionsReached: false,
+    maxIndexedAndSolutionsReached: false,
+    maxScansToExplodeReached: false,
+    winningPlan: {
+      stage: 'FETCH',
+      inputStage: {
+        stage: 'IXSCAN',
+        keyPattern: { rating: 1 },
+        indexName: 'rating_1',
+        isMultiKey: false,
+        multiKeyPaths: { rating: [] },
+        isUnique: false,
+        isSparse: false,
+        isPartial: false,
+        indexVersion: 2,
+        direction: 'forward',
+        indexBounds: { rating: [ '(6.14, 7.78)' ] }
+      }
+    },
+    rejectedPlans: []
+  },
+  executionStats: {
+    executionSuccess: true,
+    nReturned: 94327,
+    executionTimeMillis: 113,
+    totalKeysExamined: 94327,
+    totalDocsExamined: 94327,
+    executionStages: {
+      stage: 'FETCH',
+      nReturned: 94327,
+      executionTimeMillisEstimate: 13,
+      works: 94328,
+      advanced: 94327,
+      needTime: 0,
+      needYield: 0,
+      saveState: 94,
+      restoreState: 94,
+      isEOF: 1,
+      docsExamined: 94327,
+      alreadyHasObj: 0,
+      inputStage: {
+        stage: 'IXSCAN',
+        nReturned: 94327,
+        executionTimeMillisEstimate: 1,
+        works: 94328,
+        advanced: 94327,
+        needTime: 0,
+        needYield: 0,
+        saveState: 94,
+        restoreState: 94,
+        isEOF: 1,
+        keyPattern: { rating: 1 },
+        indexName: 'rating_1',
+        isMultiKey: false,
+        multiKeyPaths: { rating: [] },
+        isUnique: false,
+        isSparse: false,
+        isPartial: false,
+        indexVersion: 2,
+        direction: 'forward',
+        indexBounds: { rating: [ '(6.14, 7.78)' ] },
+        keysExamined: 94327,
+        seeks: 1,
+        dupsTested: 0,
+        dupsDropped: 0
+      }
+    }
+  },
+  command: {
+    find: 'movies',
+    filter: { rating: { '$gt': 6.14, '$lt': 7.78 } },
+    '$db': 'imdb'
+  },
+  serverInfo: {
+    host: '18bd7d62c0e7',
+    port: 27017,
+    version: '7.0.21',
+    gitVersion: 'a47b62aff2bae1914085c3ef1d90fc099acf000c'
+  },
+  serverParameters: {
+    internalQueryFacetBufferSizeBytes: 104857600,
+    internalQueryFacetMaxOutputDocSizeBytes: 104857600,
+    internalLookupStageIntermediateDocumentMaxSizeBytes: 104857600,
+    internalDocumentSourceGroupMaxMemoryBytes: 104857600,
+    internalQueryMaxBlockingSortMemoryUsageBytes: 104857600,
+    internalQueryProhibitBlockingMergeOnMongoS: 0,
+    internalQueryMaxAddToSetBytes: 104857600,
+    internalDocumentSourceSetWindowFieldsMaxMemoryBytes: 104857600,
+    internalQueryFrameworkControl: 'forceClassicEngine'
+  },
+  ok: 1
+}
