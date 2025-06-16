@@ -48,20 +48,19 @@ public class MovieService extends MovieServiceBase {
 	 * Create a new MovieService by connecting to MongoDB.
 	 */
 	public MovieService() {
-		// TODO see for example https://mongodb.github.io/mongo-java-driver/3.12/driver/tutorials/
-		// TODO: connect to MongoDB
-		mongo = null;
-		// TODO Select database "imdb"
-		db = null;
+		// Connect to MongoDB
+		mongo = MongoClients.create("mongodb://root:password@localhost:27017");
+		// Select database "imdb"
+		db = mongo.getDatabase("imdb");
 		// Create a GriFS FileSystem Object using the db
 		fs = GridFSBuckets.create(db);
-		createSampleImage();
+		// createSampleImage();
 		// Print the name of all collections in that database
 		printCollections();
 
-		// TODO Take "movies" and "tweets" collection
-		movies = null;
-		tweets = null;
+		// Take "movies" and "tweets" collection
+		movies = db.getCollection("movies");
+		tweets = db.getCollection("tweets");
 
 		// If database isn't filled (has less than 1000 documents) delete
 		// everything and fill it
